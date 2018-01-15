@@ -1,0 +1,41 @@
+{
+  "name": "push",
+  "version": "1.0.0",
+  "description": "push",
+  "main": "./server/index.js",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "build": "webpack",
+    "watch": "webpack-dev-server"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ronanyeah/push.git"
+  },
+  "author": "ronanyeah",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/ronanyeah/push/issues"
+  },
+  "dependencies": {
+    "asn1.js": "^5.0.0",
+    "chalk": "^2.3.0",
+    "copy-webpack-plugin": "^4.3.1",
+    "elm-webpack-loader": "^4.4.0",
+    "fluture": "^7.2.2",
+    "highland": "^2.10.1",
+    "http_ece": "^1.0.5",
+    "joi": "^13.0.2",
+    "jws": "^3.1.4",
+    "node-fetch": "^1.7.3",
+    "ramda": "^0.25.0",
+    "redis": "^2.8.0",
+    "urlsafe-base64": "^1.0.0",
+    "webpack": "^3.10.0"
+  },
+  "devDependencies": {
+    "jest": "^22.0.4",
+    "webpack-dev-server": "^2.11.0"
+  }
+}
