@@ -62,7 +62,7 @@ type Field
 type alias Saved =
     { subscription : Maybe Subscription
     , serverKey : List Int
-    , pushPassword : Maybe String
+    , pushPassword : String
     }
 
 
@@ -70,7 +70,7 @@ type alias Model =
     { message : String
     , subscription : Maybe Subscription
     , serverKey : List Int
-    , pushPassword : Maybe String
+    , pushPassword : String
     , passwordField : Maybe String
     , pushField : Maybe String
     }
@@ -99,32 +99,28 @@ init json =
             json
                 |> decodeString savedDataDecoder
                 |> Result.withDefault initSavedData
-
-        cmd =
-            case subscription of
-                Nothing ->
-                    Cmd.none
-
-                Just sub ->
-                    validateSubscription serverKey sub
-
-        model =
-            { message = "..."
-            , subscription = subscription
-            , serverKey = serverKey
-            , pushPassword = pushPassword
-            , passwordField = Nothing
-            , pushField = Nothing
-            }
     in
-    ( model, cmd )
+    ( { message = "..."
+      , subscription = subscription
+      , serverKey = serverKey
+      , pushPassword = pushPassword
+      , passwordField = Nothing
+      , pushField = Nothing
+      }
+    , case subscription of
+        Nothing ->
+            Cmd.none
+
+        Just sub ->
+            validateSubscription serverKey sub
+    )
 
 
 initSavedData : Saved
 initSavedData =
     { serverKey = []
     , subscription = Nothing
-    , pushPassword = Nothing
+    , pushPassword = ""
     }
 
 
@@ -218,16 +214,21 @@ update msg model =
             ( { model | passwordField = Just "" }, focusOn "input2" )
 
         Keydown Push key ->
-            case ( key, model.pushPassword, model.pushField ) of
-                ( 13, Just pw, Just txt ) ->
-                    ( { model | pushField = Nothing }, push txt pw )
+            case ( key, model.pushField ) of
+                ( 13, Just txt ) ->
+                    ( { model | pushField = Nothing }, push txt model.pushPassword )
 
                 _ ->
                     ( model, Cmd.none )
 
         Keydown Pw key ->
             if key == 13 then
-                ( { model | passwordField = Nothing, pushPassword = model.passwordField }, Cmd.none )
+                ( { model
+                    | passwordField = Nothing
+                    , pushPassword = model.passwordField |> Maybe.withDefault ""
+                  }
+                , Cmd.none
+                )
             else
                 ( model, Cmd.none )
 
@@ -238,19 +239,18 @@ update msg model =
             ( { model | passwordField = Just val }, Cmd.none )
 
         SendPush ->
-            Maybe.map2
-                (\pw txt ->
-                    ( { model | pushField = Nothing }, push txt pw )
-                )
-                model.pushPassword
-                model.pushField
+            model.pushField
+                |> Maybe.map
+                    (\txt ->
+                        ( { model | pushField = Nothing }, push txt model.pushPassword )
+                    )
                 |> Maybe.withDefault
                     ( model, Cmd.none )
 
         SetPw ->
             ( { model
                 | passwordField = Nothing
-                , pushPassword = model.passwordField
+                , pushPassword = model.passwordField |> Maybe.withDefault ""
               }
             , Cmd.none
             )
@@ -480,7 +480,7 @@ savedDataDecoder =
     map3 Saved
         (field "subscription" (nullable subscriptionDecoder))
         (field "serverKey" (list int))
-        (field "pushPassword" (nullable string))
+        (field "pushPassword" string)
 
 
 

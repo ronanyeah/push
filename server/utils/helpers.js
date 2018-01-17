@@ -1,10 +1,6 @@
 const { node } = require("fluture");
-const { __, prop, propOr, pipe, invoker } = require("ramda");
-const hl = require("highland");
+const { pipe, invoker } = require("ramda");
 const joi = require("joi");
-
-// Request -> Future Err Body
-const bodyReader = req => node(done => hl(req).toCallback(done));
 
 // Number -> [Number]
 const range = pipe(Array, invoker(0, "keys"), Array.from);
@@ -43,16 +39,8 @@ const validateSubscription = sub =>
     )
   );
 
-const json = data => ({
-  payload: JSON.stringify(data),
-  statusCode: 200,
-  contentType: "application/json"
-});
-
 module.exports = {
   validateSubscription,
-  bodyReader,
   range,
-  json,
   urlBase64ToIntArray
 };

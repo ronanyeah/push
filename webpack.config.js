@@ -1,6 +1,5 @@
-const copyWebpackPlugin = require("copy-webpack-plugin");
+const CopyWebpackPlugin = require("copy-webpack-plugin");
 const { resolve } = require("path");
-const webpack = require("webpack");
 
 const { DEBUG, NODE_ENV } = process.env;
 
@@ -47,5 +46,5 @@ module.exports = {
       }
     ]
   },
-  plugins: [new copyWebpackPlugin(["static"])]
+  plugins: [new CopyWebpackPlugin(["static"])]
 };

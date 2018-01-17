@@ -1,12 +1,17 @@
-const cacheName = "tux-cache-12";
+const assets = ["/", "/tux.png", "/bundle.js", "/manifest.json"].map(
+  url => self.location.origin + url
+);
 
-self.addEventListener("install", e =>
-  e.waitUntil(
-    caches
-      .open(cacheName)
-      .then(cache =>
-        cache.addAll(["/", "/tux.png", "/bundle.js", "/manifest.json"])
-      )
+self.addEventListener("fetch", e =>
+  e.respondWith(
+    fetch(e.request)
+      .then(res => {
+        if (res.ok && assets.includes(e.request.url)) {
+          caches.open("tux-cache").then(cache => cache.put(e.request, res));
+        }
+        return res.clone();
+      })
+      .catch(err => caches.match(e.request).then(res => res || err))
   )
 );
 
@@ -22,25 +27,3 @@ self.addEventListener("push", e =>
 );
 
 self.addEventListener("notificationclick", event => event.notification.close());
-
-self.addEventListener(
-  "activate",
-  e => (
-    e.waitUntil(
-      caches
-        .keys()
-        .then(cacheKeys =>
-          Promise.all(
-            cacheKeys
-              .filter(key => key !== cacheName)
-              .map(key => caches.delete(key))
-          )
-        )
-    ),
-    self.clients.claim()
-  )
-);
-
-self.addEventListener("fetch", e =>
-  e.respondWith(fetch(e.request).catch(_err => caches.match(e.request)))
-);

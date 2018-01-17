@@ -1,11 +1,8 @@
 const {
   range,
   urlBase64ToIntArray,
-  bodyReader,
   validateSubscription
 } = require("./helpers.js");
-
-const BODY_PAYLOAD = "TEST_PAYLOAD";
 
 const fail = x => expect(x).toBeUndefined();
 

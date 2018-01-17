@@ -7,8 +7,9 @@
     "start": "node server/index.js",
     "test": "jest",
     "test:watch": "jest --watch",
-    "build-elm": "webpack -p",
-    "watch": "webpack-dev-server"
+    "build_": "webpack -p && npm run set-api",
+    "watch": "webpack-dev-server",
+    "set-api": "node set-api.js"
   },
   "repository": {
     "type": "git",
@@ -27,7 +28,6 @@
     "copy-webpack-plugin": "^4.3.1",
     "elm-webpack-loader": "^4.4.0",
     "fluture": "^8.0.0",
-    "highland": "^2.10.1",
     "http_ece": "^1.0.5",
     "joi": "^13.0.2",
     "jws": "^3.1.4",

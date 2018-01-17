@@ -1,12 +1,11 @@
 const { map, test, propSatisfies, pipe } = require("ramda");
-const { tryP, parallel, of } = require("fluture");
+const { tryP, parallel, reject } = require("fluture");
 const asn1 = require("asn1.js");
 const jws = require("jws");
 const url = require("url");
 const urlBase64 = require("urlsafe-base64");
 
 const subscriptions = require("../db/subscriptions.js");
-const logger = require("./logger.js");
 const { validateSubscription } = require("./helpers.js");
 const sendNotification = require("./sendPushNotification.js");
 
@@ -18,12 +17,6 @@ const {
 
 // Error -> Boolean
 const isRegistrationError = propSatisfies(test(/NotRegistered/), "message");
-
-// String -> Future Err Res
-const removeSubscription = endpoint => {
-  logger("PUSH_UNSUB", endpoint);
-  return subscriptions.delete(endpoint);
-};
 
 // Object -> Future Err Res
 const addSubscription = newSub =>
@@ -107,8 +100,8 @@ const send = (title, body) =>
               // Intercept (but log) errors,
               // and delete subscription if registration is invalid.
               isRegistrationError(err)
-                ? removeSubscription(sub.endpoint)
-                : of(logger("PUSH_ERROR", err.message))
+                ? subscriptions.delete(sub.endpoint)
+                : reject(err)
           )
         )
       )
@@ -117,6 +110,5 @@ const send = (title, body) =>
 
 module.exports = {
   addSubscription,
-  removeSubscription,
   send
 };
