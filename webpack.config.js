@@ -13,13 +13,18 @@ module.exports = {
     filename: "bundle.js"
   },
   devServer: {
-    contentBase: publicFolder
+    contentBase: publicFolder,
+    proxy: {
+      "/api": {
+        target: "http://localhost:3000",
+        pathRewrite: { "^/api": "" }
+      }
+    }
   },
   module: {
     rules: [
       {
         test: /\.elm$/,
-        exclude: [/elm-stuff/, /node_modules/],
         use: [
           {
             loader: "elm-webpack-loader",
@@ -30,6 +35,15 @@ module.exports = {
             }
           }
         ]
+      },
+      {
+        test: /\.js$/,
+        use: {
+          loader: "babel-loader",
+          options: {
+            presets: ["@babel/preset-env"]
+          }
+        }
       }
     ]
   },

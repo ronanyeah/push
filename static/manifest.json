@@ -3,11 +3,11 @@
   "name": "tux",
   "icons": [
     {
-      "src": "/pwa/tux.png",
+      "src": "/tux.png",
       "type": "image/png",
       "sizes": "144x144"
     }
   ],
-  "start_url": "/pwa/index.html",
+  "start_url": "/",
   "display": "fullscreen"
 }

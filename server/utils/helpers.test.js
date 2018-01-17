@@ -1,7 +1,6 @@
 const {
   range,
   urlBase64ToIntArray,
-  getContentType,
   bodyReader,
   validateSubscription
 } = require("./helpers.js");
@@ -91,31 +90,19 @@ const vapidIntArray = [
   201
 ];
 
-describe(
-  "helpers",
-  () =>
-    test("getContentType .js", () =>
-      expect(getContentType("/folder/index.js")).toBe(
-        "application/javascript"
-      )),
+test("sub validation ok", () =>
+  validateSubscription(VALID_SUBSCRIPTION)
+    .promise()
+    .then(sub => expect(sub).toEqual(VALID_SUBSCRIPTION))
+    .catch(fail));
 
-  test("getContentType default", () =>
-    expect(getContentType("/folder/.vimrc")).toBe("text/plain")),
+test("sub validation fail", () =>
+  validateSubscription({ not: "ok" })
+    .promise()
+    .then(fail)
+    .catch(err => expect(err).toBeTruthy()));
 
-  test("sub validation ok", () =>
-    validateSubscription(VALID_SUBSCRIPTION)
-      .promise()
-      .then(sub => expect(sub).toEqual(VALID_SUBSCRIPTION))
-      .catch(fail)),
+test("range", () => expect(range(3)).toEqual([0, 1, 2]));
 
-  test("sub validation fail", () =>
-    validateSubscription({ not: "ok" })
-      .promise()
-      .then(fail)
-      .catch(err => expect(err).toBeTruthy())),
-
-  test("range", () => expect(range(3)).toEqual([0, 1, 2])),
-
-  test("urlBase64ToIntArray", () =>
-    expect(urlBase64ToIntArray(vapidPublicKey)).toEqual(vapidIntArray))
-);
+test("urlBase64ToIntArray", () =>
+  expect(urlBase64ToIntArray(vapidPublicKey)).toEqual(vapidIntArray));

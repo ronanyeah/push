@@ -5,50 +5,38 @@ if (navigator.serviceWorker) {
     .catch(alert);
 }
 
-var Elm = require("./Tux.elm");
-var storedState = localStorage.getItem("tux-model");
+const Elm = require("./Tux.elm");
 
-var startingState = (function() {
-  try {
-    return JSON.parse(storedState);
-  } catch (e) {
-    return {};
-  }
-})();
-
-var app = Elm.Tux.fullscreen(startingState);
+const app = Elm.Tux.fullscreen(localStorage.getItem("tux-model") || "");
 
 // PUSH SUBSCRIBE
-app.ports.pushSubscribe.subscribe(function(key) {
-  return navigator.serviceWorker.ready
-    .then(function(reg) {
-      return reg.pushManager.subscribe({
+app.ports.pushSubscribe.subscribe(key =>
+  navigator.serviceWorker.ready
+    .then(reg =>
+      reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: new Uint8Array(key)
-      });
-    })
-    .then(function(subscription) {
-      return app.ports.pushSubscription.send(subscription.toJSON());
-    })
-    .catch(alert);
-});
+      })
+    )
+    .then(subscription =>
+      app.ports.pushSubscription.send(subscription.toJSON())
+    )
+    .catch(alert)
+);
 
 // PUSH UNSUBSCRIBE
-app.ports.pushUnsubscribe.subscribe(function() {
-  return navigator.serviceWorker.ready
-    .then(function(reg) {
-      return reg.pushManager.getSubscription();
-    })
-    .then(function(subscription) {
-      return subscription.unsubscribe();
-    })
-    .then(function() {
-      return app.ports.pushSubscription.send(null);
-    })
-    .catch(alert);
-});
+app.ports.pushUnsubscribe.subscribe(() =>
+  navigator.serviceWorker.ready
+    .then(reg => reg.pushManager.getSubscription())
+    .then(
+      subscription =>
+        subscription ? subscription.unsubscribe() : Promise.resolve()
+    )
+    .then(() => app.ports.pushSubscription.send(null))
+    .catch(alert)
+);
 
 // SAVE STATE
-app.ports.setStorage.subscribe(function(state) {
-  return localStorage.setItem("tux-model", JSON.stringify(state));
-});
+app.ports.setStorage.subscribe(state =>
+  localStorage.setItem("tux-model", JSON.stringify(state))
+);

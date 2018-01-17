@@ -7,7 +7,7 @@ import Element.Attributes exposing (center, height, id, padding, px, spacing, ty
 import Element.Events exposing (keyCode, on, onClick, onInput)
 import Html exposing (Html)
 import Http
-import Json.Decode exposing (Decoder, bool, decodeValue, field, int, list, map, map2, map3, nullable, string)
+import Json.Decode exposing (Decoder, bool, decodeString, decodeValue, field, int, list, map, map2, map3, nullable, string)
 import Json.Encode exposing (Value, object)
 import Style exposing (StyleSheet, style, stylesheet)
 import Style.Border as Border
@@ -15,7 +15,7 @@ import Style.Color as Color
 import Task
 
 
-main : Program Value Model Msg
+main : Program String Model Msg
 main =
     Html.programWithFlags
         { init = init
@@ -92,12 +92,12 @@ type alias Keys =
 -- INIT
 
 
-init : Value -> ( Model, Cmd Msg )
+init : String -> ( Model, Cmd Msg )
 init json =
     let
         { serverKey, subscription, pushPassword } =
             json
-                |> decodeValue savedDataDecoder
+                |> decodeString savedDataDecoder
                 |> Result.withDefault initSavedData
 
         cmd =
@@ -117,7 +117,7 @@ init json =
             , pushField = Nothing
             }
     in
-    model ! [ cmd ]
+    ( model, cmd )
 
 
 initSavedData : Saved
@@ -171,13 +171,14 @@ update msg model =
             case res of
                 Ok valid ->
                     if valid then
-                        model ! []
+                        ( model, Cmd.none )
                     else
-                        { model | serverKey = [] } ! [ pushUnsubscribe () ]
+                        ( { model | serverKey = [] }, pushUnsubscribe () )
 
                 Err err ->
-                    { model | message = "Subscription Validation Error" }
-                        ! [ log "Subscription Validation Error:" err ]
+                    ( { model | message = "Subscription Validation Error" }
+                    , log "Subscription Validation Error:" err
+                    )
 
         SubscriptionCb value ->
             let
@@ -194,87 +195,94 @@ update msg model =
                         Nothing ->
                             Cmd.none
             in
-            { model | subscription = subscription } ! [ cmd ]
+            ( { model | subscription = subscription }, cmd )
 
         ServerKeyCb res ->
             case res of
                 Ok key ->
-                    { model | serverKey = key } ! [ pushSubscribe key ]
+                    ( { model | serverKey = key }, pushSubscribe key )
 
                 Err err ->
-                    { model | message = "Server Key Error" } ! [ log "Server Key Error:" err ]
+                    ( { model | message = "Server Key Error" }, log "Server Key Error:" err )
 
         Cancel Push ->
-            { model | pushField = Nothing } ! []
+            ( { model | pushField = Nothing }, Cmd.none )
 
         Cancel Pw ->
-            { model | passwordField = Nothing } ! []
+            ( { model | passwordField = Nothing }, Cmd.none )
 
         Edit Push ->
-            { model | pushField = Just "" } ! [ focusOn "input1" ]
+            ( { model | pushField = Just "" }, focusOn "input1" )
 
         Edit Pw ->
-            { model | passwordField = Just "" } ! [ focusOn "input2" ]
+            ( { model | passwordField = Just "" }, focusOn "input2" )
 
         Keydown Push key ->
             case ( key, model.pushPassword, model.pushField ) of
                 ( 13, Just pw, Just txt ) ->
-                    { model | pushField = Nothing } ! [ push txt pw ]
+                    ( { model | pushField = Nothing }, push txt pw )
 
                 _ ->
-                    model ! []
+                    ( model, Cmd.none )
 
         Keydown Pw key ->
             if key == 13 then
-                { model | passwordField = Nothing, pushPassword = model.passwordField } ! []
+                ( { model | passwordField = Nothing, pushPassword = model.passwordField }, Cmd.none )
             else
-                model ! []
+                ( model, Cmd.none )
 
         Update Push val ->
-            { model | pushField = Just val } ! []
+            ( { model | pushField = Just val }, Cmd.none )
 
         Update Pw val ->
-            { model | passwordField = Just val } ! []
+            ( { model | passwordField = Just val }, Cmd.none )
 
         SendPush ->
-            case ( model.pushPassword, model.pushField ) of
-                ( Just pw, Just txt ) ->
-                    { model | pushField = Nothing } ! [ push txt pw ]
-
-                _ ->
-                    model ! []
+            Maybe.map2
+                (\pw txt ->
+                    ( { model | pushField = Nothing }, push txt pw )
+                )
+                model.pushPassword
+                model.pushField
+                |> Maybe.withDefault
+                    ( model, Cmd.none )
 
         SetPw ->
-            { model | passwordField = Nothing, pushPassword = model.passwordField } ! []
+            ( { model
+                | passwordField = Nothing
+                , pushPassword = model.passwordField
+              }
+            , Cmd.none
+            )
 
         Subscribe ->
-            model ! [ subscribe ]
+            ( model, subscribe )
 
         Unsubscribe ->
-            { model | message = "Unsubscribed!" } ! [ pushUnsubscribe () ]
+            ( { model | message = "Unsubscribed!" }, pushUnsubscribe () )
 
         SubscribeCb res ->
             case res of
                 Ok status ->
-                    { model | message = status } ! []
+                    ( { model | message = status }, Cmd.none )
 
                 Err err ->
-                    { model | message = "Error!" } ! [ log "ERROR" err ]
+                    ( { model | message = "Error!" }, log "ERROR" err )
 
         SendPushCb res ->
             case res of
                 Ok status ->
-                    { model | message = status } ! []
+                    ( { model | message = status }, Cmd.none )
 
                 Err err ->
                     let
                         pushErr e =
-                            { model | message = "Push error!" } ! [ log "Push error:" e ]
+                            ( { model | message = "Push error!" }, log "Push error:" e )
                     in
                     case err of
                         Http.BadStatus { status } ->
                             if status.code == 401 then
-                                { model | message = "Incorrect password!" } ! []
+                                ( { model | message = "Incorrect password!" }, Cmd.none )
                             else
                                 pushErr err
 
@@ -284,10 +292,10 @@ update msg model =
         FocusCb result ->
             case result of
                 Ok _ ->
-                    model ! []
+                    ( model, Cmd.none )
 
                 Err err ->
-                    model ! [ log "Focus error:" err ]
+                    ( model, log "Focus error:" err )
 
 
 
@@ -319,7 +327,7 @@ view { message, pushField, passwordField, subscription } =
     viewport styling <|
         column None
             [ center, verticalCenter, spacing 7 ]
-            [ el None [] <| image "/pwa/tux.png" None [] empty
+            [ el None [] <| image "/tux.png" None [] empty
             , el None [] <| text <| "> " ++ message
             , case subscription of
                 Just _ ->
@@ -390,49 +398,46 @@ focusOn =
 
 push : String -> String -> Cmd Msg
 push str pw =
-    Http.send SendPushCb
-        (Http.post "/push"
-            (Http.jsonBody
-                (object
-                    [ ( "password", Json.Encode.string pw )
-                    , ( "text", Json.Encode.string str )
-                    ]
-                )
+    Http.post "/api/push"
+        (Http.jsonBody
+            (object
+                [ ( "password", Json.Encode.string pw )
+                , ( "text", Json.Encode.string str )
+                ]
             )
-            statusDecoder
         )
+        statusDecoder
+        |> Http.send SendPushCb
 
 
 saveSub : Subscription -> Cmd Msg
 saveSub sub =
-    Http.send SubscribeCb
-        (Http.post "/subscribe"
-            (Http.jsonBody
-                (encodeSubscription sub)
-            )
-            statusDecoder
+    Http.post "/api/subscribe"
+        (Http.jsonBody
+            (encodeSubscription sub)
         )
+        statusDecoder
+        |> Http.send SubscribeCb
 
 
 subscribe : Cmd Msg
 subscribe =
-    Http.send ServerKeyCb
-        (Http.get "/config" serverKeyDecoder)
+    Http.get "/api/config" serverKeyDecoder
+        |> Http.send ServerKeyCb
 
 
 validateSubscription : List Int -> Subscription -> Cmd Msg
 validateSubscription key sub =
-    Http.send ValidateSubscriptionCb
-        (Http.post "/validate"
-            (Http.jsonBody
-                (object
-                    [ ( "subscription", encodeSubscription sub )
-                    , ( "key", Json.Encode.list (List.map Json.Encode.int key) )
-                    ]
-                )
+    Http.post "/api/validate"
+        (Http.jsonBody
+            (object
+                [ ( "subscription", encodeSubscription sub )
+                , ( "key", Json.Encode.list (List.map Json.Encode.int key) )
+                ]
             )
-            (field "valid" bool)
         )
+        (field "valid" bool)
+        |> Http.send ValidateSubscriptionCb
 
 
 log : String -> a -> Cmd Msg

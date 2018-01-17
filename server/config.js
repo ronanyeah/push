@@ -7,8 +7,11 @@ const {
 } = process.env;
 
 if (
-  (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY || !PUSH_PASSWORD || !MY_EMAIL,
-  REDIS_URL)
+  !VAPID_PUBLIC_KEY ||
+  !VAPID_PRIVATE_KEY ||
+  !PUSH_PASSWORD ||
+  !MY_EMAIL ||
+  !REDIS_URL
 ) {
   // Keys are from require('web-push').generateVAPIDKeys().
   // Password can be anything.

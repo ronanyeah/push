@@ -4,9 +4,10 @@
   "description": "push",
   "main": "./server/index.js",
   "scripts": {
+    "start": "node server/index.js",
     "test": "jest",
     "test:watch": "jest --watch",
-    "build": "webpack",
+    "build-elm": "webpack -p",
     "watch": "webpack-dev-server"
   },
   "repository": {
@@ -19,11 +20,13 @@
     "url": "https://github.com/ronanyeah/push/issues"
   },
   "dependencies": {
+    "@babel/core": "^7.0.0-beta.37",
+    "@babel/preset-env": "^7.0.0-beta.37",
     "asn1.js": "^5.0.0",
-    "chalk": "^2.3.0",
+    "babel-loader": "^8.0.0-beta.0",
     "copy-webpack-plugin": "^4.3.1",
     "elm-webpack-loader": "^4.4.0",
-    "fluture": "^7.2.2",
+    "fluture": "^8.0.0",
     "highland": "^2.10.1",
     "http_ece": "^1.0.5",
     "joi": "^13.0.2",
@@ -31,6 +34,8 @@
     "node-fetch": "^1.7.3",
     "ramda": "^0.25.0",
     "redis": "^2.8.0",
+    "restify": "^6.3.4",
+    "restify-cors-middleware": "^1.1.0",
     "urlsafe-base64": "^1.0.0",
     "webpack": "^3.10.0"
   },
