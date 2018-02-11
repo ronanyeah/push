@@ -1,18 +1,24 @@
 port module Tux exposing (main)
 
-import Color exposing (black)
+import Color
 import Dom
-import Element exposing (Attribute, button, column, el, empty, image, inputText, row, text, viewport)
-import Element.Attributes exposing (center, height, id, padding, px, spacing, type_, verticalCenter, width)
-import Element.Events exposing (keyCode, on, onClick, onInput)
+import Element exposing (Attribute, Element, attribute, center, centerY, column, decorativeImage, el, empty, height, layout, padding, px, row, spacing, text, width)
+import Element.Border as Border
+import Element.Font as Font
+import Element.Input as Input
 import Html exposing (Html)
+import Html.Attributes
+import Html.Events exposing (keyCode, on)
 import Http
-import Json.Decode exposing (Decoder, bool, decodeString, decodeValue, field, int, list, map, map2, map3, nullable, string)
+import Json.Decode as Decode exposing (Decoder, bool, decodeString, decodeValue, field, int, list, map2, map3, nullable, string)
 import Json.Encode exposing (Value, object)
-import Style exposing (StyleSheet, style, stylesheet)
-import Style.Border as Border
-import Style.Color as Color
 import Task
+
+
+id : String -> Attribute msg
+id =
+    Html.Attributes.id
+        >> attribute
 
 
 main : Program String Model Msg
@@ -135,7 +141,6 @@ type Msg
     | Edit Field
     | FocusCb (Result Dom.Error ())
     | Cancel Field
-    | Keydown Field Int
     | SetPw
     | Subscribe
     | SubscribeCb (Result Http.Error String)
@@ -213,25 +218,6 @@ update msg model =
         Edit Pw ->
             ( { model | passwordField = Just "" }, focusOn "input2" )
 
-        Keydown Push key ->
-            case ( key, model.pushField ) of
-                ( 13, Just txt ) ->
-                    ( { model | pushField = Nothing }, push txt model.pushPassword )
-
-                _ ->
-                    ( model, Cmd.none )
-
-        Keydown Pw key ->
-            if key == 13 then
-                ( { model
-                    | passwordField = Nothing
-                    , pushPassword = model.passwordField |> Maybe.withDefault ""
-                  }
-                , Cmd.none
-                )
-            else
-                ( model, Cmd.none )
-
         Update Push val ->
             ( { model | pushField = Just val }, Cmd.none )
 
@@ -275,19 +261,10 @@ update msg model =
                     ( { model | message = status }, Cmd.none )
 
                 Err err ->
-                    let
-                        pushErr e =
-                            ( { model | message = "Push error!" }, log "Push error:" e )
-                    in
-                    case err of
-                        Http.BadStatus { status } ->
-                            if status.code == 401 then
-                                ( { model | message = "Incorrect password!" }, Cmd.none )
-                            else
-                                pushErr err
-
-                        _ ->
-                            pushErr err
+                    if is401 err then
+                        ( { model | message = "Incorrect password!" }, Cmd.none )
+                    else
+                        ( { model | message = "Push error!" }, log "Push error:" err )
 
         FocusCb result ->
             case result of
@@ -302,89 +279,147 @@ update msg model =
 -- VIEW
 
 
-type Styles
-    = Button
-    | None
+buttonLabel : String -> Element msg
+buttonLabel =
+    text
+        >> el
+            [ width <| px 200
+            , height <| px 30
+            , Border.dashed
+            , Border.color Color.black
+            , Border.width 2
+            , Font.center
+            , padding 5
+            ]
 
 
-styling : StyleSheet Styles variation
-styling =
-    stylesheet
-        [ style None []
-        , style Button [ Border.dashed, Color.border black ]
-        ]
+smallButtonLabel : String -> Element msg
+smallButtonLabel =
+    text
+        >> el
+            [ width <| px 100
+            , height <| px 30
+            , Border.dashed
+            , Border.color Color.black
+            , Border.width 2
+            , Font.center
+            , padding 5
+            ]
 
 
 view : Model -> Html Msg
 view { message, pushField, passwordField, subscription } =
-    let
-        buttonSizes msg =
-            [ onClick msg, width <| px 200, height <| px 30 ]
+    layout [] <|
+        el [] <|
+            column
+                [ center, centerY, spacing 7 ]
+                [ decorativeImage [ width <| px 300 ] { src = "/tux.png" }
+                , el [] <| text <| "> " ++ message
+                , case subscription of
+                    Just _ ->
+                        Input.button []
+                            { onPress = Just Unsubscribe
+                            , label = buttonLabel "unsubscribe"
+                            }
 
-        smallButton msg =
-            [ onClick msg, width <| px 100, height <| px 30 ]
-    in
-    viewport styling <|
-        column None
-            [ center, verticalCenter, spacing 7 ]
-            [ el None [] <| image "/tux.png" None [] empty
-            , el None [] <| text <| "> " ++ message
-            , case subscription of
-                Just _ ->
-                    button <| el Button (buttonSizes Unsubscribe) <| text "unsubscribe"
+                    Nothing ->
+                        Input.button []
+                            { onPress = Just Subscribe
+                            , label = buttonLabel "subscribe"
+                            }
+                , case pushField of
+                    Just str ->
+                        column
+                            []
+                            [ Input.text
+                                [ id "input1"
+                                , onEnter <| SendPush
+                                ]
+                                { onChange = Just <| Update Push
+                                , text = str
+                                , label = Input.labelAbove [] empty
+                                , notice = Nothing
+                                , placeholder = Nothing
+                                }
+                            , row
+                                [ center, spacing 5, padding 4 ]
+                                [ Input.button []
+                                    { onPress = Just <| Cancel Push
+                                    , label = smallButtonLabel "cancel"
+                                    }
+                                , Input.button []
+                                    { onPress = Just SendPush
+                                    , label = smallButtonLabel "send"
+                                    }
+                                ]
+                            ]
 
-                Nothing ->
-                    button <| el Button (buttonSizes Subscribe) <| text "subscribe"
-            , case pushField of
-                Just str ->
-                    column None
-                        []
-                        [ inputText None
-                            [ id "input1"
-                            , type_ "text"
-                            , onKeyDown <| Keydown Push
-                            , onInput <| Update Push
+                    Nothing ->
+                        Input.button []
+                            { onPress = Just <| Edit Push
+                            , label = buttonLabel "push"
+                            }
+                , case passwordField of
+                    Just str ->
+                        column
+                            []
+                            [ Input.currentPassword
+                                [ id "input2"
+                                , onEnter <| SetPw
+                                ]
+                                { onChange = Just <| Update Pw
+                                , text = str
+                                , label = Input.labelAbove [] empty
+                                , notice = Nothing
+                                , placeholder = Nothing
+                                }
+                            , row
+                                [ center, spacing 5, padding 4 ]
+                                [ Input.button []
+                                    { onPress = Just <| Cancel Pw
+                                    , label = smallButtonLabel "cancel"
+                                    }
+                                , Input.button []
+                                    { onPress = Just SetPw
+                                    , label = smallButtonLabel "set"
+                                    }
+                                ]
                             ]
-                            str
-                        , row None
-                            [ center, spacing 5, padding 4 ]
-                            [ button <| el Button (smallButton <| Cancel Push) <| text "cancel"
-                            , button <| el Button (smallButton SendPush) <| text "send"
-                            ]
-                        ]
 
-                Nothing ->
-                    button <| el Button (buttonSizes <| Edit Push) <| text "push"
-            , case passwordField of
-                Just str ->
-                    column None
-                        []
-                        [ inputText None
-                            [ id "input2"
-                            , type_ "password"
-                            , onKeyDown <| Keydown Pw
-                            , onInput <| Update Pw
-                            ]
-                            str
-                        , row None
-                            [ center, spacing 5, padding 4 ]
-                            [ button <| el Button (smallButton <| Cancel Pw) <| text "cancel"
-                            , button <| el Button (smallButton SetPw) <| text "set"
-                            ]
-                        ]
-
-                Nothing ->
-                    button <| el Button (buttonSizes <| Edit Pw) <| text "set password"
-            ]
+                    Nothing ->
+                        Input.button []
+                            { onPress = Just <| Edit Pw
+                            , label = buttonLabel "set password"
+                            }
+                ]
 
 
 
 -- HELPERS
 
 
-onKeyDown : (Int -> msg) -> Attribute variation msg
-onKeyDown tagger =
-    on "keyup" (map tagger keyCode)
+onEnter : msg -> Attribute msg
+onEnter msg =
+    keyCode
+        |> Decode.andThen
+            (\code ->
+                if code == 13 then
+                    Decode.succeed msg
+                else
+                    Decode.fail ""
+            )
+        |> on "keydown"
+        |> attribute
+
+
+is401 : Http.Error -> Bool
+is401 err =
+    case err of
+        Http.BadStatus { status } ->
+            status.code == 401
+
+        _ ->
+            False
 
 
 
